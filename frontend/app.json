@@ -7,18 +7,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.pylessonhub.hn5co8"
+      "bundleIdentifier": "com.rahulprakash.pylessonhub"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.emergent.pylessonhub.hn5co8"
+      "package": "com.rahulprakash.pylessonhub"
     },
     "web": {
       "bundler": "metro",

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useState } from "react";
 import {
   Modal,
@@ -38,6 +39,20 @@ export default function SettingsScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTimeout(() => setCleared(false), 2000);
   };
+
+  const openLink = async (url: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // No app available to handle the URL (e.g. no mail client) — nothing to recover, just skip.
+    }
+  };
+
+  const onMoreApps = () =>
+    openLink("https://play.google.com/store/apps/dev?id=8034666750185557028");
+
+  const onSendFeedback = () => openLink("mailto:admin@rahulprakash.co.in");
 
   return (
     <View style={[styles.root, { backgroundColor: colors.surface }]}>
@@ -109,6 +124,46 @@ export default function SettingsScreen() {
             ✓ All progress cleared
           </Text>
         )}
+
+        <Text style={[styles.section, { color: colors.muted }]}>MORE</Text>
+        <View
+          style={[styles.group, { backgroundColor: colors.surfaceSecondary }]}
+        >
+          <Pressable
+            testID="more-apps-button"
+            style={[styles.row, styles.rowBorder, { borderColor: colors.divider }]}
+            onPress={onMoreApps}
+          >
+            <View style={styles.rowLeft}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="apps" size={18} color={colors.brand} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                More apps by Rahul
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            testID="send-feedback-button"
+            style={styles.row}
+            onPress={onSendFeedback}
+          >
+            <View style={styles.rowLeft}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="mail" size={18} color={colors.brand} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                Send feedback
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        </View>
 
         <Text style={[styles.section, { color: colors.muted }]}>ABOUT</Text>
         <View
