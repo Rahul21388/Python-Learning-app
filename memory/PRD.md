@@ -40,9 +40,9 @@ tracking, dark mode toggle, and a learning streak. No backend, no cloud, no auth
 - ✅ Local persistence across reloads; streak increments on lesson completion
 - ✅ E2E tested (frontend); quiz-result race condition fixed (set local UI state before store update; memoized lesson lookup)
 - ✅ Lesson Search: inline search bar on Courses tab (`searchLessons()` in `src/data/course.ts` — ranked title/key-topic/module matching); live results replace module list, tap jumps to lesson, clear restores modules, empty state. E2E tested (iteration_2, all pass). Streaks re-verified working.
+- ✅ Syntax highlighting for Python code blocks: dependency-free tokenizer in `src/components/CodeBlock.tsx` (keywords, builtins, strings, comments, numbers, decorators) with light/dark palettes; used in lesson screen. Verified via screenshots in both themes.
 
 ## Backlog / Future
 - P1: Bookmark/favourite lessons
-- P1: Syntax highlighting for code blocks
 - P2: Daily goal reminders; per-lesson notes
 - P2: Achievements/badges beyond streaks

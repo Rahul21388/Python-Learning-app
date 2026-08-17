@@ -5,10 +5,10 @@ import { useEffect } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CodeBlock } from "@/src/components/CodeBlock";
 import { QuizEngine } from "@/src/components/QuizEngine";
 import { findLesson } from "@/src/data/course";
 import { useProgressStore } from "@/src/store/progressStore";
-import { CODE_FONT } from "@/src/theme/useTheme";
 import { radius, spacing } from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
 import { useMemo, useState } from "react";
@@ -116,24 +116,7 @@ export default function LessonDetailScreen() {
           {lesson.content}
         </Text>
 
-        {lesson.code ? (
-          <View
-            style={[styles.codeBlock, { backgroundColor: colors.surfaceSecondary }]}
-          >
-            <View style={styles.codeHeader}>
-              <Ionicons name="logo-python" size={14} color={colors.brand} />
-              <Text style={[styles.codeLabel, { color: colors.muted }]}>
-                Python
-              </Text>
-            </View>
-            <Text
-              style={[styles.codeText, { color: colors.onSurface }]}
-              selectable
-            >
-              {lesson.code}
-            </Text>
-          </View>
-        ) : null}
+        {lesson.code ? <CodeBlock code={lesson.code} /> : null}
 
         {lesson.keys.length > 0 && (
           <View
@@ -273,15 +256,6 @@ const styles = StyleSheet.create({
   timeText: { fontSize: 12, fontWeight: "700" },
   h1: { fontSize: 26, fontWeight: "800", marginBottom: spacing.md },
   body: { fontSize: 16, lineHeight: 25 },
-  codeBlock: {
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-    gap: spacing.sm,
-  },
-  codeHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  codeLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
-  codeText: { fontFamily: CODE_FONT, fontSize: 13.5, lineHeight: 21 },
   keysBox: {
     borderRadius: radius.md,
     padding: spacing.lg,
