@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import { File, Paths } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
   Modal,
@@ -13,7 +16,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useProgressStore } from "@/src/store/progressStore";
+import {
+  applyProgressSnapshot,
+  getProgressSnapshot,
+  ProgressSnapshot,
+  sanitizeProgressSnapshot,
+  useProgressStore,
+} from "@/src/store/progressStore";
 import { radius, spacing } from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
 
@@ -25,7 +34,23 @@ export default function SettingsScreen() {
   const clearAllProgress = useProgressStore((s) => s.clearAllProgress);
 
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [cleared, setCleared] = useState(false);
+  const [pendingImport, setPendingImport] = useState<ProgressSnapshot | null>(
+    null,
+  );
+  const [toast, setToast] = useState<{
+    text: string;
+    tone: "success" | "error";
+  } | null>(null);
+
+  const showToast = (text: string, tone: "success" | "error" = "success") => {
+    setToast({ text, tone });
+    Haptics.notificationAsync(
+      tone === "success"
+        ? Haptics.NotificationFeedbackType.Success
+        : Haptics.NotificationFeedbackType.Error,
+    );
+    setTimeout(() => setToast(null), 2500);
+  };
 
   const onToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -35,9 +60,67 @@ export default function SettingsScreen() {
   const onClear = () => {
     clearAllProgress();
     setConfirmVisible(false);
-    setCleared(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCleared(false), 2000);
+    showToast("All progress cleared");
+  };
+
+  const onExport = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const payload = {
+        app: "learn-python",
+        exportVersion: 1,
+        exportedAt: new Date().toISOString(),
+        data: getProgressSnapshot(),
+      };
+      const file = new File(Paths.cache, `learn-python-progress-${Date.now()}.json`);
+      file.create({ overwrite: true });
+      file.write(JSON.stringify(payload, null, 2));
+
+      if (!(await Sharing.isAvailableAsync())) {
+        showToast("Sharing isn't available on this device", "error");
+        return;
+      }
+      await Sharing.shareAsync(file.uri, {
+        mimeType: "application/json",
+        dialogTitle: "Export your progress",
+        UTI: "public.json",
+      });
+    } catch {
+      showToast("Couldn't export progress", "error");
+    }
+  };
+
+  const onImportPress = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/json",
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+
+      const file = new File(result.assets[0].uri);
+      const parsed = JSON.parse(await file.text());
+      const raw =
+        parsed && typeof parsed === "object" && "data" in parsed
+          ? (parsed as { data: unknown }).data
+          : parsed;
+      const snapshot = sanitizeProgressSnapshot(raw);
+      if (!snapshot) {
+        showToast("That file isn't a valid progress export", "error");
+        return;
+      }
+      setPendingImport(snapshot);
+    } catch {
+      showToast("Couldn't read that file", "error");
+    }
+  };
+
+  const onConfirmImport = () => {
+    if (!pendingImport) return;
+    applyProgressSnapshot(pendingImport);
+    setPendingImport(null);
+    showToast("Progress imported");
   };
 
   const openLink = async (url: string) => {
@@ -98,6 +181,40 @@ export default function SettingsScreen() {
           style={[styles.group, { backgroundColor: colors.surfaceSecondary }]}
         >
           <Pressable
+            testID="export-progress-button"
+            style={[styles.row, styles.rowBorder, { borderColor: colors.divider }]}
+            onPress={onExport}
+          >
+            <View style={styles.rowLeft}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="share-outline" size={18} color={colors.brand} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                Export progress
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            testID="import-progress-button"
+            style={[styles.row, styles.rowBorder, { borderColor: colors.divider }]}
+            onPress={onImportPress}
+          >
+            <View style={styles.rowLeft}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="download-outline" size={18} color={colors.brand} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                Import progress
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+          <Pressable
             testID="clear-data-button"
             style={styles.row}
             onPress={() => {
@@ -116,12 +233,15 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Pressable>
         </View>
-        {cleared && (
+        {toast && (
           <Text
-            testID="cleared-toast"
-            style={[styles.clearedNote, { color: colors.success }]}
+            testID="settings-toast"
+            style={[
+              styles.clearedNote,
+              { color: toast.tone === "success" ? colors.success : colors.error },
+            ]}
           >
-            ✓ All progress cleared
+            {toast.tone === "success" ? "✓" : "✕"} {toast.text}
           </Text>
         )}
 
@@ -232,6 +352,55 @@ export default function SettingsScreen() {
               >
                 <Text style={[styles.modalBtnText, { color: colors.onError }]}>
                   Clear
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!pendingImport}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPendingImport(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            testID="import-confirm-modal"
+            style={[styles.modalCard, { backgroundColor: colors.surface }]}
+          >
+            <View style={[styles.modalIcon, { backgroundColor: "#FDE7E7" }]}>
+              <Ionicons name="warning" size={26} color={colors.error} />
+            </View>
+            <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
+              Import progress?
+            </Text>
+            <Text style={[styles.modalText, { color: colors.muted }]}>
+              This will replace your current completed lessons, quiz scores
+              and streak with the data from this file. This can&apos;t be
+              undone.
+            </Text>
+            <View style={styles.modalBtns}>
+              <Pressable
+                testID="import-cancel-button"
+                onPress={() => setPendingImport(null)}
+                style={[
+                  styles.modalBtn,
+                  { backgroundColor: colors.surfaceSecondary },
+                ]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.onSurface }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                testID="import-confirm-button"
+                onPress={onConfirmImport}
+                style={[styles.modalBtn, { backgroundColor: colors.error }]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.onError }]}>
+                  Replace
                 </Text>
               </Pressable>
             </View>
