@@ -1,0 +1,214 @@
+{
+  "app_name": "Learn Python",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "A structured, highly readable, and native-feeling educational environment that puts the content front and center.",
+  "color": {
+    "surface": "#FFFFFF",
+    "onSurface": "#000000",
+    "surfaceSecondary": "#F2F2F7",
+    "onSurfaceSecondary": "#1C1C1E",
+    "surfaceTertiary": "#E5E5EA",
+    "onSurfaceTertiary": "#3A3A3C",
+    "surfaceInverse": "#000000",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#3776AB",
+    "brandPrimary": "#3776AB",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#FFD43B",
+    "onBrandSecondary": "#1C1C1E",
+    "brandTertiary": "#E6F0F9",
+    "onBrandTertiary": "#3776AB",
+    "success": "#34C759",
+    "onSuccess": "#FFFFFF",
+    "warning": "#FFCC00",
+    "onWarning": "#1C1C1E",
+    "error": "#FF3B30",
+    "onError": "#FFFFFF",
+    "info": "#007AFF",
+    "onInfo": "#FFFFFF",
+    "border": "#E5E5EA",
+    "borderStrong": "#C7C7CC",
+    "divider": "#C6C6C8"
+  },
+  "color_dark": {
+    "surface": "#000000",
+    "onSurface": "#FFFFFF",
+    "surfaceSecondary": "#1C1C1E",
+    "onSurfaceSecondary": "#EBEBF5",
+    "surfaceTertiary": "#2C2C2E",
+    "onSurfaceTertiary": "#EBEBF5",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#000000",
+    "brand": "#4B8BBE",
+    "brandPrimary": "#4B8BBE",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#FFE873",
+    "onBrandSecondary": "#1C1C1E",
+    "brandTertiary": "#2A4D6B",
+    "onBrandTertiary": "#FFFFFF",
+    "success": "#32D74B",
+    "onSuccess": "#FFFFFF",
+    "warning": "#FFD60A",
+    "onWarning": "#1C1C1E",
+    "error": "#FF453A",
+    "onError": "#FFFFFF",
+    "info": "#0A84FF",
+    "onInfo": "#FFFFFF",
+    "border": "#38383A",
+    "borderStrong": "#48484A",
+    "divider": "#38383A"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Geist",
+    "monoFontFamily": "JetBrains Mono",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous padding around content, safe area clearance at root, sticky CTAs get bottom padding so they don't cover scrolling content. Elements follow a 4pt/8pt grid rhythm.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 1,
+  "navigation": "bottom_tabs",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Bottom tab bar",
+      "Sticky header over scrolling content",
+      "Sticky Continue primary CTA in Lesson",
+      "Glass header on bottom sheets for quizzes"
+    ],
+    "dont's": [
+      "List rows",
+      "Form inputs",
+      "Module cards"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Courses Tab",
+      "purpose": "Dashboard to view overall progress and browse the 13 Python modules.",
+      "states": {
+        "loading": "Centered spinner",
+        "empty": "No progress yet? Start module 1.",
+        "error": "Error loading modules."
+      },
+      "layout": "Use a Bento/grid-style header for overall completion %. Below it, a vertical list of 13 module cards. Each card uses `surfaceSecondary`, 16px radius, showing title, lesson count, and a linear progress bar. Ensure safe area at top."
+    },
+    {
+      "name": "Module Detail",
+      "purpose": "List lessons within a specific module.",
+      "states": {
+        "loading": "Skeleton rows",
+        "empty": "No lessons found in this module.",
+        "error": "Failed to load lessons."
+      },
+      "layout": "Stack layout. Large title header (collapses on scroll). Vertical list of lessons. Each row (min 56pt height) shows lesson title, completion state (checkmark icon if completed), and chevron. Clean dividers between rows."
+    },
+    {
+      "name": "Lesson Detail",
+      "purpose": "Read lesson content, key points, and take the quiz.",
+      "states": {
+        "loading": "Centered spinner",
+        "empty": "Lesson content missing.",
+        "error": "Failed to load lesson."
+      },
+      "layout": "Scrollable view. Title + Body text in `Geist`, code snippets in `JetBrains Mono` on `surfaceSecondary` blocks. 'Mark Complete' and 'Take Quiz' primary CTAs are sticky at the bottom over a glass blur container. Quiz triggers a Bottom Sheet."
+    },
+    {
+      "name": "Quiz Bottom Sheet",
+      "purpose": "Interactive MCQ quiz engine.",
+      "states": {
+        "loading": "Spinner",
+        "empty": "No questions available.",
+        "error": "Quiz engine failed."
+      },
+      "layout": "Pulls up via `@gorhom/bottom-sheet`. Shows one question at a time. 4 options as selectable `surfaceSecondary` cards. Upon selection, reveal explanation (success/error color styling) and Next Question button. Score shown at the end."
+    },
+    {
+      "name": "Progress Tab",
+      "purpose": "Visualize user's learning journey, streaks, and overall score.",
+      "states": {
+        "loading": "Skeleton grids",
+        "empty": "Take a lesson to see progress.",
+        "error": "Failed to calculate stats."
+      },
+      "layout": "Bento/grid-style modular layout. Large card for Streak (flame icon + day count). Circular progress for overall %. Grid of smaller cards for quiz scores. Sticky 'Continue Learning' CTA at the bottom."
+    },
+    {
+      "name": "Settings Tab",
+      "purpose": "Manage app preferences and data.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Native iOS grouped list layout. `surfaceSecondary` rows inside a `surfaceTertiary` (or pure white on iOS) background depending on pure native styling. Rows for Dark Mode Toggle, Clear Local Data, About."
+    }
+  ],
+  "haptics": {
+    "events": {
+      "primary_button_press": "impactLight",
+      "tab_change": "selection",
+      "quiz_option_select": "selection",
+      "quiz_correct_answer": "notificationSuccess",
+      "quiz_wrong_answer": "notificationError",
+      "lesson_mark_complete": "notificationSuccess",
+      "toggle_switch": "impactLight"
+    }
+  },
+  "images": {
+    "hero_course_bg_light": {
+      "url": "https://images.pexels.com/photos/7723817/pexels-photo-7723817.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Colorful celebration card"
+    },
+    "hero_course_bg_dark": {
+      "url": "https://images.pexels.com/photos/249798/pexels-photo-249798.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Vibrant and detailed view of JavaScript code on a screen"
+    },
+    "python_logo": {
+      "url": "https://images.unsplash.com/photo-1649180556628-9ba704115795?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxweXRob24lMjBsb2dvJTIwdHJhbnNwYXJlbnR8ZW58MHx8fHwxNzg2OTU4NzE1fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Python logo"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Follow 1 iOS-Native Clean personality. Strict safe-area spacing and generous whitespace.",
+    "Implement the Python color scheme using the exact tokens provided (`brand`: #3776AB, `brandSecondary`: #FFD43B). Do NOT default to generic React Native blue.",
+    "Bento/grid-style modular layouts should be used for the Progress Tab and Courses header, heavily inspired by modern 2026 UI trends.",
+    "Ensure dark mode toggle is functional and maps perfectly to the `color_dark` tokens.",
+    "Quiz should be implemented as an interactive bottom sheet over the Lesson view.",
+    "Always place a gradient scrim under text that overlays images, using a 3-stop linear gradient as specified in the rules.",
+    "All primary CTAs over scrollable content (like 'Continue' or 'Mark Complete') must be placed in a sticky bottom container using a glass-blur effect with proper safe area inset."
+  ]
+}

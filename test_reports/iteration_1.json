@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only E2E testing of Learn Python (Expo web preview). 13 modules render, module_00..module_12 present, lesson rows navigate correctly, Mark complete flips CTA to Next lesson, Quiz toggle expands, options select, explanation shows, next question advances. Dark mode toggle works. Clear-data confirm modal + cancel/confirm both work. Persistence to storage works across reloads. BUG: quiz-result screen never appears after clicking the final 'See results' quiz-next-button; the quiz card collapses instead of showing the score view (quiz-retry-button never rendered). Data integrity confirmed: 13 modules x 10 lessons = 130 total. Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents' (React Native web internal, non-blocking).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "QuizEngine",
+        "issue": "Clicking the final 'See results' quiz-next-button on the last question does NOT transition to the finished/results view. quiz-result and quiz-retry-button never mount. Reproduced on /lesson/l_00_02: 2 questions, answered both, clicked 'See results' but the quiz card collapsed and no result view appeared. This blocks users from ever seeing their quiz score UI (although the score itself is still saved to store via setQuizScore before setFinished). Reference: /app/frontend/src/components/QuizEngine.tsx:42-53 (onNext) and /app/frontend/app/lesson/[lessonId].tsx:204-212 (quizOpen conditional). Likely root cause: when setQuizScore triggers a zustand state update, it causes LessonDetailScreen (which subscribes to progress store) to re-render; but more importantly the parent may be re-rendering the QuizEngine subtree in a way that unmounts/remounts it before the finished state is applied, OR the parent's quizOpen local state is being reset. Recommend: (a) hoist finished state or use a functional setState pattern, (b) verify quizOpen persistence across store updates, (c) call setQuizScore AFTER setFinished(true) to avoid intra-render remount races.",
+        "testID": "quiz-result",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "react-native-web (internal)",
+        "issue": "Console warning 'props.pointerEvents is deprecated. Use style.pointerEvents'. Emitted by a dependency (likely Ionicons/LinearGradient or Pressable). Not a blocker but should be tracked."
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix QuizEngine: after answering the last question and tapping quiz-next-button ('See results'), the component should show quiz-result and quiz-retry-button. Currently the results screen never renders (verified twice on /lesson/l_00_02). Investigate whether setQuizScore -> zustand update -> parent re-render is remounting QuizEngine and wiping its local 'finished' state. Suggested fix: call setFinished(true) BEFORE setQuizScore, OR wrap QuizEngine's finished/index/etc into a single useReducer, OR memoize the QuizEngine props (e.g. React.memo + stable questions ref).",
+    "Optional: track react-native-web pointerEvents deprecation warning."
+  ],
+  "critical_code_review_comments": [
+    "progressStore.ts uses top-level IIFE for hydration; if the module is re-evaluated (e.g. Fast Refresh) the subscribe listener could double-register. Consider guarding subscription with a module-scoped flag.",
+    "In QuizEngine.onNext, setQuizScore + setFinished are both called synchronously — verify they batch and that no upstream unmount happens between them.",
+    "Progress tab uses 'text=Progress' which collides with the 'Overall progress' label — this is a test-only concern; the testIDs on progress-scroll/continue-button/progress-module-* are all correctly wired.",
+    "Files are all well under 700 lines and use RN primitives (View/Text/Pressable) correctly. No HTML tags found."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (no backend)", "frontend": "~90% (1 blocking bug in quiz results screen)"},
+  "seed_data_creation": "None — offline app, no seed required.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "App is fully offline; use EXPO_PUBLIC_BACKEND_URL host (https://py-lesson-hub-1.preview.emergentagent.com). All testIDs specified in the request exist and are wired correctly (verified: courses-list, module-card-module_00..12, lesson-row-l_00_01, mark-complete-button, next-lesson-button, quiz-toggle, quiz-option-0..3, quiz-explanation, quiz-next-button, dark-mode-switch, clear-data-button, clear-confirm-modal, clear-cancel-button, clear-confirm-button, cleared-toast, progress-scroll, progress-module-module_00, continue-button). AsyncStorage persistence works and survives reloads. For Progress tab navigation in Playwright, prefer a[href*='progress'] over text=Progress (multiple matches). To retest the quiz-result bug: open /lesson/l_00_02, tap quiz-toggle, answer both questions with quiz-option-0, click quiz-next-button labeled 'See results' — expected: quiz-result appears with quiz-retry-button; actual: quiz card collapses and neither element renders.",
+  "rca_of_issue": "Bug: quiz-result never shown after last question. Reproduction: 1) Navigate to /lesson/l_00_02 (2-question quiz). 2) Tap quiz-toggle to expand. 3) Tap quiz-option-0 -> explanation appears -> tap quiz-next-button ('Next question'). 4) Tap quiz-option-0 again -> explanation appears -> tap quiz-next-button (now labeled 'See results'). Expected: quiz-result view with score % and quiz-retry-button. Actual: no result view; the quiz card appears collapsed and iter=3 finds neither quiz-option-0 nor quiz-result. Likely RCA: onNext() calls setQuizScore(lessonId, score) which mutates zustand state; the parent LessonDetailScreen (subscribed via useProgressStore selectors) re-renders. If for any reason the parent's quizOpen becomes false during that re-render OR the QuizEngine subtree remounts (losing its useState), the finished branch never renders. Mitigation: call setFinished(true) BEFORE setQuizScore, or consolidate quiz state into a single useReducer, or move quiz finished/score state into the zustand store so it survives remounts."
+}
