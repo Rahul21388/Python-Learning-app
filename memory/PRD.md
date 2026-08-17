@@ -39,9 +39,10 @@ tracking, dark mode toggle, and a learning streak. No backend, no cloud, no auth
 - ✅ Settings: dark mode toggle (store-driven, whole app), clear data with confirm modal, about
 - ✅ Local persistence across reloads; streak increments on lesson completion
 - ✅ E2E tested (frontend); quiz-result race condition fixed (set local UI state before store update; memoized lesson lookup)
+- ✅ Lesson Search: inline search bar on Courses tab (`searchLessons()` in `src/data/course.ts` — ranked title/key-topic/module matching); live results replace module list, tap jumps to lesson, clear restores modules, empty state. E2E tested (iteration_2, all pass). Streaks re-verified working.
 
 ## Backlog / Future
-- P1: Search across lessons; bookmark/favourite lessons
+- P1: Bookmark/favourite lessons
 - P1: Syntax highlighting for code blocks
 - P2: Daily goal reminders; per-lesson notes
 - P2: Achievements/badges beyond streaks

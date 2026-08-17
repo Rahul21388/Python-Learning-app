@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only testing for new Lesson Search feature and existing Streaks verification on the offline 'Learn Python' Expo app (mobile viewport 390x844). All 7 requested test scenarios PASS. Search returns properly ranked results (title-start > title-includes > key-hits > module-hits), tapping a result navigates to /lesson/[lessonId], clear button restores hero + 13 modules, empty state shows for gibberish, key-point/topic searches ('dictionary'→5, 'indentation'→2) return relevant lessons. Marking a lesson complete correctly bumps streak from 0 -> 1 and Best -> 1 on the Progress tab. Regression: 13 modules render when not searching, module cards remain tappable, dark-mode toggle in Settings restyles the search bar and screen correctly. No backend involved (offline app). One minor console warning observed but non-blocking.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "expo-router / Pressable (likely)",
+        "issue": "Console warning on load: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking, but should be migrated. Likely emitted by a library or a component using pointerEvents={...} prop instead of style.pointerEvents."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_2.json"
+  ],
+  "action_items": [
+    "OPTIONAL: Track down the pointerEvents deprecation warning (search codebase for pointerEvents= prop) and move to style.pointerEvents to silence RN Web deprecation warning. Non-blocking for MVP."
+  ],
+  "critical_code_review_comments": [
+    "progressStore.ts: computeStreak uses (state.streak || 1) as-is when lastActiveDate === todayKey; correct behavior but a same-day duplicate complete on a brand-new install first bumps streak from 0->1 then future same-day completions leave it at 1 (verified correct).",
+    "courses.tsx renderItem inspects 'lesson' in item to differentiate LessonSearchResult vs Module — clean typing; keyExtractor handles both. Good.",
+    "courses.tsx uses FlatList ListHeaderComponent for search bar which keeps focus stable during query typing — good pattern.",
+    "storage/index.web.ts double-JSON-stringify at set time (store calls storage.setItem with JSON.stringify(state), then AsyncStorage.setItem also JSON.stringifies). Read path parses twice as well, so round-trip is correct — not a bug, but slightly wasteful CPU/storage."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (no backend)",
+    "frontend": "100% (7/7 scenarios pass)"
+  },
+  "seed_data_creation": "None — used the built-in Settings 'Clear data' and IndexedDB reset to obtain a clean state before verifying streak transition 0 -> 1.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "App URL: https://py-lesson-hub-1.preview.emergentagent.com (from EXPO_PUBLIC_BACKEND_URL). Fully offline; no auth. Mobile viewport 390x844. Key testIDs: lesson-search-input, search-clear-button, search-empty-state, search-result-<lessonId>, courses-list, module-card-<moduleId>, mark-complete-button, next-lesson-button, progress-scroll, dark-mode-switch, clear-data-button. Storage uses AsyncStorage → IndexedDB on web; automation contexts may retain state across runs — clear via Settings clear-data-button or indexedDB.databases()/deleteDatabase before deterministic streak tests.",
+  "rca_of_issue": "N/A — no bugs found. Initial confusion during first run where Progress tab click failed with 'Element is not visible' was a Playwright selector issue (multiple 'Progress' text nodes on the lesson page including the previous 'Progress' aria label); workaround was to navigate directly to /progress URL which succeeded and verified the streak flow."
+}

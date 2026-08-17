@@ -70,6 +70,41 @@ export function findLesson(lessonId: string): {
   return null;
 }
 
+export interface LessonSearchResult {
+  lesson: Lesson;
+  module: Module;
+  moduleIndex: number;
+}
+
+export function searchLessons(query: string, limit = 40): LessonSearchResult[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const titleStarts: LessonSearchResult[] = [];
+  const titleHits: LessonSearchResult[] = [];
+  const keyHits: LessonSearchResult[] = [];
+  const moduleHits: LessonSearchResult[] = [];
+  COURSE_DATA.modules.forEach((module, moduleIndex) => {
+    const moduleMatch = module.title.toLowerCase().includes(q);
+    for (const lesson of module.lessons) {
+      const result = { lesson, module, moduleIndex };
+      const title = lesson.title.toLowerCase();
+      if (title.startsWith(q)) {
+        titleStarts.push(result);
+      } else if (title.includes(q)) {
+        titleHits.push(result);
+      } else if (lesson.keys.some((k) => k.toLowerCase().includes(q))) {
+        keyHits.push(result);
+      } else if (moduleMatch) {
+        moduleHits.push(result);
+      }
+    }
+  });
+  return [...titleStarts, ...titleHits, ...keyHits, ...moduleHits].slice(
+    0,
+    limit,
+  );
+}
+
 export function getModule(moduleId: string): Module | undefined {
   return COURSE_DATA.modules.find((m) => m.id === moduleId);
 }

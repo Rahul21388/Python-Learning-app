@@ -101,3 +101,31 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+frontend:
+  - task: "Lesson Search on Courses tab"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/courses.tsx, /app/frontend/src/data/course.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added inline search bar to Courses tab. searchLessons() in course.ts ranks by title-startsWith > title-includes > key-topics > module title. Results replace module list while typing; tap navigates to /lesson/[lessonId]; clear button restores modules. Smoke-tested via screenshot: 'loop' returns 14 results."
+
+  - task: "Streaks feature (store + Progress tab UI)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/store/progressStore.ts, /app/frontend/app/(tabs)/progress.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Streak logic already exists (computeStreak on markLessonComplete, streak/bestStreak persisted). Needs verification that completing a lesson sets streak to 1 and Progress tab flame card updates."
+
+agent_communication:
+  - agent: "main"
+    message: "Iteration 2: verify new Lesson Search (search bar on Courses tab, testIDs: lesson-search-input, search-result-<id>, search-clear-button, search-empty-state) and confirm existing streaks feature updates after completing a lesson. Offline app, no backend."
