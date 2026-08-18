@@ -31,8 +31,24 @@ export default function RootLayout() {
   const hasHydrated = useProgressStore((s) => s._hasHydrated);
 
   const onSplashLayout = useCallback(() => {
-    SplashScreen.hideAsync();
+    SplashScreen.hideAsync().catch(() => {});
   }, []);
+
+  // Fallback for when the custom splash view below never renders at all. In
+  // a standalone/production build useIconFonts passes an empty font map, and
+  // expo-font's useFonts initializes `loaded` to `isMapLoaded({})` — which is
+  // vacuously true for an empty map — so it's already `true` on the very
+  // first render. That skips the `!loaded && !error` branch entirely, so
+  // onLayout (the only other place hideAsync() is called) never fires, and
+  // the native splash — armed by preventAutoHideAsync() above — is stuck on
+  // screen forever even though the real app has already rendered underneath
+  // it. (Expo Go doesn't hit this: there the font map is the real CDN list,
+  // so `loaded` genuinely starts false and the branch below does mount.)
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded, error]);
 
   // Once on cold start, re-arm the OS-level daily reminder from persisted
   // settings (covers a reinstall/update wiping the OS schedule). Never
