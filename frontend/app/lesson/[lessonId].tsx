@@ -1,8 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CodeBlock } from "@/src/components/CodeBlock";
@@ -12,6 +12,8 @@ import { useProgressStore } from "@/src/store/progressStore";
 import { radius, spacing } from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
 import { useMemo, useState } from "react";
+
+const NOTE_SAVE_DEBOUNCE_MS = 500;
 
 export default function LessonDetailScreen() {
   const { colors } = useTheme();
@@ -25,12 +27,39 @@ export default function LessonDetailScreen() {
   const setLastLesson = useProgressStore((s) => s.setLastLesson);
   const bookmarkedLessonIds = useProgressStore((s) => s.bookmarkedLessonIds);
   const toggleBookmark = useProgressStore((s) => s.toggleBookmark);
+  const lessonNotes = useProgressStore((s) => s.lessonNotes);
+  const setLessonNote = useProgressStore((s) => s.setLessonNote);
 
   const [quizOpen, setQuizOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingNoteRef = useRef<{ lessonId: string; note: string } | null>(null);
+
+  const flushPendingNote = () => {
+    if (noteTimerRef.current) {
+      clearTimeout(noteTimerRef.current);
+      noteTimerRef.current = null;
+    }
+    if (pendingNoteRef.current) {
+      setLessonNote(pendingNoteRef.current.lessonId, pendingNoteRef.current.note);
+      pendingNoteRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (lessonId) setLastLesson(lessonId);
   }, [lessonId, setLastLesson]);
+
+  // Load the note for the lesson we're landing on, and flush any pending
+  // debounced save for the lesson we're leaving (deliberately not depending
+  // on lessonNotes — that would reset noteText mid-keystroke on every save).
+  useEffect(() => {
+    setNoteText(lessonNotes[lessonId] ?? "");
+    setNotesOpen(false);
+    return () => flushPendingNote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
 
   if (!info) {
     return (
@@ -59,6 +88,13 @@ export default function LessonDetailScreen() {
   const onToggleBookmark = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleBookmark(lesson.lessonId);
+  };
+
+  const onChangeNote = (text: string) => {
+    setNoteText(text);
+    pendingNoteRef.current = { lessonId: lesson.lessonId, note: text };
+    if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
+    noteTimerRef.current = setTimeout(flushPendingNote, NOTE_SAVE_DEBOUNCE_MS);
   };
 
   const onNext = () => {
@@ -162,6 +198,63 @@ export default function LessonDetailScreen() {
             ))}
           </View>
         )}
+
+        {/* Notes expandable */}
+        <View
+          style={[
+            styles.quizCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Pressable
+            testID="notes-toggle"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setNotesOpen((o) => !o);
+            }}
+            style={styles.quizHeader}
+          >
+            <View style={styles.quizHeaderLeft}>
+              <View
+                style={[styles.quizIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="create-outline" size={18} color={colors.brand} />
+              </View>
+              <View>
+                <Text style={[styles.quizTitle, { color: colors.onSurface }]}>
+                  My notes
+                </Text>
+                <Text style={[styles.quizSub, { color: colors.muted }]}>
+                  {noteText.trim()
+                    ? "Tap to view or edit"
+                    : "Private, only on this device"}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name={notesOpen ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={colors.muted}
+            />
+          </Pressable>
+          {notesOpen && (
+            <View style={styles.quizContent}>
+              <TextInput
+                testID="lesson-notes-input"
+                value={noteText}
+                onChangeText={onChangeNote}
+                onBlur={flushPendingNote}
+                placeholder="Jot down anything you want to remember about this lesson…"
+                placeholderTextColor={colors.muted}
+                multiline
+                style={[
+                  styles.notesInput,
+                  { color: colors.onSurface, backgroundColor: colors.surfaceSecondary },
+                ]}
+              />
+            </View>
+          )}
+        </View>
 
         {/* Quiz expandable */}
         {lesson.quiz.length > 0 && (
@@ -321,6 +414,14 @@ const styles = StyleSheet.create({
   quizContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
+  },
+  notesInput: {
+    minHeight: 100,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: 15,
+    lineHeight: 21,
+    textAlignVertical: "top",
   },
   ctaWrap: {
     position: "absolute",

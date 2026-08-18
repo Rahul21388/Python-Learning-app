@@ -2,7 +2,7 @@
   "expo": {
     "name": "Learn Python",
     "slug": "pylessonhub",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pylessonhub",
@@ -25,6 +25,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {

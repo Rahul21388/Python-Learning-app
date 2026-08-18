@@ -25,6 +25,20 @@ import {
 } from "@/src/store/progressStore";
 import { radius, spacing } from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
+import { remindersSupported, syncDailyReminder } from "@/src/utils/reminders";
+
+const REMINDER_TIME_PRESETS: { label: string; hour: number; minute: number }[] = [
+  { label: "9:00 AM", hour: 9, minute: 0 },
+  { label: "1:00 PM", hour: 13, minute: 0 },
+  { label: "6:00 PM", hour: 18, minute: 0 },
+  { label: "9:00 PM", hour: 21, minute: 0 },
+];
+
+function formatReminderTime(hour: number, minute: number): string {
+  const period = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:${String(minute).padStart(2, "0")} ${period}`;
+}
 
 export default function SettingsScreen() {
   const { colors, dark } = useTheme();
@@ -32,6 +46,11 @@ export default function SettingsScreen() {
   const darkMode = useProgressStore((s) => s.darkMode);
   const toggleDarkMode = useProgressStore((s) => s.toggleDarkMode);
   const clearAllProgress = useProgressStore((s) => s.clearAllProgress);
+  const dailyReminderEnabled = useProgressStore((s) => s.dailyReminderEnabled);
+  const dailyReminderHour = useProgressStore((s) => s.dailyReminderHour);
+  const dailyReminderMinute = useProgressStore((s) => s.dailyReminderMinute);
+  const setDailyReminderEnabled = useProgressStore((s) => s.setDailyReminderEnabled);
+  const setDailyReminderTime = useProgressStore((s) => s.setDailyReminderTime);
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingImport, setPendingImport] = useState<ProgressSnapshot | null>(
@@ -55,6 +74,37 @@ export default function SettingsScreen() {
   const onToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleDarkMode();
+  };
+
+  const onToggleReminder = async (next: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!remindersSupported()) {
+      showToast("Reminders aren't available in this preview", "error");
+      return;
+    }
+    const result = await syncDailyReminder(
+      next,
+      dailyReminderHour,
+      dailyReminderMinute,
+    );
+    if (result === "permission-denied") {
+      setDailyReminderEnabled(false);
+      showToast("Notifications permission denied — enable it in system settings", "error");
+      return;
+    }
+    setDailyReminderEnabled(next);
+    showToast(next ? "Daily reminder set" : "Daily reminder turned off");
+  };
+
+  const onSelectReminderTime = async (hour: number, minute: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDailyReminderTime(hour, minute);
+    if (!dailyReminderEnabled) return;
+    const result = await syncDailyReminder(true, hour, minute);
+    if (result === "permission-denied") {
+      setDailyReminderEnabled(false);
+      showToast("Notifications permission denied — enable it in system settings", "error");
+    }
   };
 
   const onClear = () => {
@@ -174,6 +224,82 @@ export default function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
+        </View>
+
+        <Text style={[styles.section, { color: colors.muted }]}>
+          REMINDERS
+        </Text>
+        <View
+          style={[styles.group, { backgroundColor: colors.surfaceSecondary }]}
+        >
+          <View
+            style={[
+              styles.row,
+              dailyReminderEnabled && styles.rowBorder,
+              { borderColor: colors.divider },
+            ]}
+          >
+            <View style={[styles.rowLeft, { flex: 1, marginRight: spacing.sm }]}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="notifications" size={18} color={colors.brand} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                  Daily reminder
+                </Text>
+                <Text style={[styles.rowSub, { color: colors.muted }]}>
+                  {dailyReminderEnabled
+                    ? `Reminds you at ${formatReminderTime(
+                        dailyReminderHour,
+                        dailyReminderMinute,
+                      )} every day`
+                    : "A gentle nudge to keep your streak going"}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              testID="daily-reminder-switch"
+              value={dailyReminderEnabled}
+              onValueChange={onToggleReminder}
+              trackColor={{ false: colors.surfaceTertiary, true: colors.brand }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          {dailyReminderEnabled && (
+            <View style={styles.reminderTimeRow}>
+              {REMINDER_TIME_PRESETS.map((preset) => {
+                const selected =
+                  preset.hour === dailyReminderHour &&
+                  preset.minute === dailyReminderMinute;
+                return (
+                  <Pressable
+                    key={preset.label}
+                    testID={`reminder-time-${preset.hour}-${preset.minute}`}
+                    onPress={() => onSelectReminderTime(preset.hour, preset.minute)}
+                    style={[
+                      styles.timeChip,
+                      {
+                        backgroundColor: selected
+                          ? colors.brand
+                          : colors.surfaceTertiary,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.timeChipText,
+                        { color: selected ? colors.onBrand : colors.onSurface },
+                      ]}
+                    >
+                      {preset.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <Text style={[styles.section, { color: colors.muted }]}>DATA</Text>
@@ -441,7 +567,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowLabel: { fontSize: 16, fontWeight: "500" },
+  rowSub: { fontSize: 12, marginTop: 2 },
   rowValue: { fontSize: 15 },
+  reminderTimeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  timeChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  timeChipText: { fontSize: 13, fontWeight: "700" },
   clearedNote: { fontSize: 14, fontWeight: "600", marginTop: spacing.sm },
   aboutBody: { padding: spacing.md, gap: spacing.sm },
   aboutHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

@@ -21,6 +21,10 @@ interface ProgressState {
   unlockedBadges: Record<string, string>; // badge id -> ISO date unlocked
   newlyUnlocked: string[]; // pending badge ids to show as a toast, most recent last
   bookmarkedLessonIds: Set<string>;
+  lessonNotes: Record<string, string>; // lessonId -> private on-device note
+  dailyReminderEnabled: boolean;
+  dailyReminderHour: number; // 0-23, local time
+  dailyReminderMinute: number; // 0-59
   _hasHydrated: boolean;
 
   markLessonComplete: (lessonId: string) => void;
@@ -30,6 +34,9 @@ interface ProgressState {
   clearAllProgress: () => void;
   dismissBadge: (badgeId: string) => void;
   toggleBookmark: (lessonId: string) => void;
+  setLessonNote: (lessonId: string, note: string) => void;
+  setDailyReminderEnabled: (enabled: boolean) => void;
+  setDailyReminderTime: (hour: number, minute: number) => void;
   setHasHydrated: (v: boolean) => void;
 }
 
@@ -108,6 +115,10 @@ export const useProgressStore = create<ProgressState>((set) => ({
   unlockedBadges: {},
   newlyUnlocked: [],
   bookmarkedLessonIds: new Set(),
+  lessonNotes: {},
+  dailyReminderEnabled: false,
+  dailyReminderHour: 19,
+  dailyReminderMinute: 0,
   _hasHydrated: false,
 
   markLessonComplete: (lessonId) =>
@@ -145,6 +156,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
       unlockedBadges: {},
       newlyUnlocked: [],
       bookmarkedLessonIds: new Set(),
+      lessonNotes: {},
     }),
 
   dismissBadge: (badgeId) =>
@@ -163,6 +175,24 @@ export const useProgressStore = create<ProgressState>((set) => ({
       return { bookmarkedLessonIds: next };
     }),
 
+  // Empty/whitespace-only notes are dropped rather than stored, so an
+  // emptied note doesn't linger in export/import or count as "has a note".
+  setLessonNote: (lessonId, note) =>
+    set((state) => {
+      const lessonNotes = { ...state.lessonNotes };
+      if (note.trim()) {
+        lessonNotes[lessonId] = note;
+      } else {
+        delete lessonNotes[lessonId];
+      }
+      return { lessonNotes };
+    }),
+
+  setDailyReminderEnabled: (enabled) => set({ dailyReminderEnabled: enabled }),
+
+  setDailyReminderTime: (hour, minute) =>
+    set({ dailyReminderHour: hour, dailyReminderMinute: minute }),
+
   setHasHydrated: (v) => set({ _hasHydrated: v }),
 }));
 
@@ -179,6 +209,10 @@ export interface ProgressSnapshot {
   lastActiveDate: string;
   unlockedBadges: Record<string, string>;
   bookmarkedLessonIds: string[];
+  lessonNotes: Record<string, string>;
+  dailyReminderEnabled: boolean;
+  dailyReminderHour: number;
+  dailyReminderMinute: number;
 }
 
 function extract(state: ProgressState): ProgressSnapshot {
@@ -192,6 +226,10 @@ function extract(state: ProgressState): ProgressSnapshot {
     lastActiveDate: state.lastActiveDate,
     unlockedBadges: state.unlockedBadges,
     bookmarkedLessonIds: Array.from(state.bookmarkedLessonIds),
+    lessonNotes: state.lessonNotes,
+    dailyReminderEnabled: state.dailyReminderEnabled,
+    dailyReminderHour: state.dailyReminderHour,
+    dailyReminderMinute: state.dailyReminderMinute,
   };
 }
 
@@ -242,7 +280,8 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     (typeof obj.quizScores === "object" && obj.quizScores !== null) ||
     typeof obj.streak === "number" ||
     typeof obj.lastLessonId === "string" ||
-    Array.isArray(obj.bookmarkedLessonIds);
+    Array.isArray(obj.bookmarkedLessonIds) ||
+    (typeof obj.lessonNotes === "object" && obj.lessonNotes !== null);
   if (!hasRecognizedShape) return null;
 
   const validLessonIds = new Set(ALL_LESSONS.map((l) => l.lessonId));
@@ -305,6 +344,34 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
       )
     : [];
 
+  const lessonNotes: Record<string, string> = {};
+  if (obj.lessonNotes && typeof obj.lessonNotes === "object") {
+    for (const [lessonId, note] of Object.entries(
+      obj.lessonNotes as Record<string, unknown>,
+    )) {
+      if (validLessonIds.has(lessonId) && typeof note === "string" && note.trim()) {
+        lessonNotes[lessonId] = note.slice(0, 4000);
+      }
+    }
+  }
+
+  const dailyReminderEnabled =
+    typeof obj.dailyReminderEnabled === "boolean" ? obj.dailyReminderEnabled : false;
+  const dailyReminderHour =
+    typeof obj.dailyReminderHour === "number" &&
+    Number.isInteger(obj.dailyReminderHour) &&
+    obj.dailyReminderHour >= 0 &&
+    obj.dailyReminderHour <= 23
+      ? obj.dailyReminderHour
+      : 19;
+  const dailyReminderMinute =
+    typeof obj.dailyReminderMinute === "number" &&
+    Number.isInteger(obj.dailyReminderMinute) &&
+    obj.dailyReminderMinute >= 0 &&
+    obj.dailyReminderMinute <= 59
+      ? obj.dailyReminderMinute
+      : 0;
+
   return {
     lessonsCompleted,
     quizScores,
@@ -315,6 +382,10 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     lastActiveDate,
     unlockedBadges,
     bookmarkedLessonIds,
+    lessonNotes,
+    dailyReminderEnabled,
+    dailyReminderHour,
+    dailyReminderMinute,
   };
 }
 

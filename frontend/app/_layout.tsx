@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Image, LogBox, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BadgeUnlockToast } from "@/src/components/BadgeUnlockToast";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { useProgressStore } from "@/src/store/progressStore";
+import { silentlyResyncDailyReminder } from "@/src/utils/reminders";
 
 // Disable logbox errors etc so that users can see the app
 // and agent works as expected.
@@ -26,10 +27,27 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
   const darkMode = useProgressStore((s) => s.darkMode);
+  const hasHydrated = useProgressStore((s) => s._hasHydrated);
 
   const onSplashLayout = useCallback(() => {
     SplashScreen.hideAsync();
   }, []);
+
+  // Once on cold start, re-arm the OS-level daily reminder from persisted
+  // settings (covers a reinstall/update wiping the OS schedule). Never
+  // prompts for permission itself — see silentlyResyncDailyReminder.
+  const resyncedRef = useRef(false);
+  useEffect(() => {
+    if (!hasHydrated || resyncedRef.current) return;
+    resyncedRef.current = true;
+    const { dailyReminderEnabled, dailyReminderHour, dailyReminderMinute } =
+      useProgressStore.getState();
+    void silentlyResyncDailyReminder(
+      dailyReminderEnabled,
+      dailyReminderHour,
+      dailyReminderMinute,
+    );
+  }, [hasHydrated]);
 
   // If the CDN is unreachable we fall through on error rather than wedging
   // the app — icons will tofu, but the app still boots.
