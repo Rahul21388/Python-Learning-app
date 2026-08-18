@@ -109,6 +109,22 @@ export function getModule(moduleId: string): Module | undefined {
   return COURSE_DATA.modules.find((m) => m.id === moduleId);
 }
 
+// Bookmarked lessons in module/lesson order (not Set insertion order).
+export function getBookmarkedLessons(
+  bookmarkedIds: Set<string>,
+): LessonSearchResult[] {
+  if (bookmarkedIds.size === 0) return [];
+  const out: LessonSearchResult[] = [];
+  COURSE_DATA.modules.forEach((module, moduleIndex) => {
+    for (const lesson of module.lessons) {
+      if (bookmarkedIds.has(lesson.lessonId)) {
+        out.push({ lesson, module, moduleIndex });
+      }
+    }
+  });
+  return out;
+}
+
 export function getFirstLessonId(): string {
   return COURSE_DATA.modules[0].lessons[0].lessonId;
 }

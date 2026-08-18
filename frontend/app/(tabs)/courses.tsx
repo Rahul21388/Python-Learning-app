@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -19,6 +19,8 @@ import { ProgressBar } from "@/src/components/ProgressBar";
 import {
   COURSE_DATA,
   LessonSearchResult,
+  TOTAL_LESSONS,
+  getBookmarkedLessons,
   getModuleProgress,
   getOverallProgress,
   searchLessons,
@@ -33,12 +35,17 @@ export default function CoursesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const completed = useProgressStore((s) => s.lessonsCompleted);
+  const bookmarkedLessonIds = useProgressStore((s) => s.bookmarkedLessonIds);
   const overall = getOverallProgress(completed);
 
   const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
   const results = useMemo(() => searchLessons(query), [query]);
   const completedSet = useMemo(() => new Set(completed), [completed]);
+  const bookmarkedLessons = useMemo(
+    () => getBookmarkedLessons(bookmarkedLessonIds),
+    [bookmarkedLessonIds],
+  );
 
   const openLesson = (lessonId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -149,6 +156,78 @@ export default function CoursesScreen() {
                     {COURSE_DATA.modules.length} modules
                   </Text>
                 </LinearGradient>
+
+                <Text style={[styles.section, { color: colors.muted }]}>
+                  SAVED LESSONS ({bookmarkedLessons.length}/{TOTAL_LESSONS})
+                </Text>
+                {bookmarkedLessons.length > 0 ? (
+                  <View style={{ gap: spacing.sm }}>
+                    {bookmarkedLessons.map((item) => (
+                      <Pressable
+                        key={item.lesson.lessonId}
+                        testID={`saved-lesson-${item.lesson.lessonId}`}
+                        onPress={() => openLesson(item.lesson.lessonId)}
+                        style={({ pressed }) => [
+                          styles.resultRow,
+                          {
+                            backgroundColor: colors.surfaceSecondary,
+                            opacity: pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.resultIcon,
+                            { backgroundColor: colors.brandTertiary },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name="star"
+                            size={16}
+                            color={colors.brandSecondary}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.resultTitle, { color: colors.onSurface }]}
+                          >
+                            {item.lesson.title}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.resultSub, { color: colors.muted }]}
+                          >
+                            Module {String(item.moduleIndex).padStart(2, "0")} •{" "}
+                            {item.module.title}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color={colors.muted}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : (
+                  <View
+                    testID="saved-lessons-empty-state"
+                    style={[
+                      styles.savedEmptyWrap,
+                      { backgroundColor: colors.surfaceSecondary },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="star-outline"
+                      size={20}
+                      color={colors.muted}
+                    />
+                    <Text style={[styles.savedEmptyText, { color: colors.muted }]}>
+                      No saved lessons yet. Star lessons to save them.
+                    </Text>
+                  </View>
+                )}
 
                 <Text style={[styles.section, { color: colors.muted }]}>
                   MODULES
@@ -312,6 +391,14 @@ const styles = StyleSheet.create({
   },
   resultTitle: { fontSize: 15, fontWeight: "600" },
   resultSub: { fontSize: 12, marginTop: 2 },
+  savedEmptyWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  savedEmptyText: { fontSize: 13, flex: 1 },
   emptyWrap: {
     alignItems: "center",
     gap: spacing.sm,

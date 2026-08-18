@@ -20,6 +20,7 @@ interface ProgressState {
   lastActiveDate: string;
   unlockedBadges: Record<string, string>; // badge id -> ISO date unlocked
   newlyUnlocked: string[]; // pending badge ids to show as a toast, most recent last
+  bookmarkedLessonIds: Set<string>;
   _hasHydrated: boolean;
 
   markLessonComplete: (lessonId: string) => void;
@@ -28,6 +29,7 @@ interface ProgressState {
   toggleDarkMode: () => void;
   clearAllProgress: () => void;
   dismissBadge: (badgeId: string) => void;
+  toggleBookmark: (lessonId: string) => void;
   setHasHydrated: (v: boolean) => void;
 }
 
@@ -105,6 +107,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
   lastActiveDate: "",
   unlockedBadges: {},
   newlyUnlocked: [],
+  bookmarkedLessonIds: new Set(),
   _hasHydrated: false,
 
   markLessonComplete: (lessonId) =>
@@ -141,6 +144,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
       lastActiveDate: "",
       unlockedBadges: {},
       newlyUnlocked: [],
+      bookmarkedLessonIds: new Set(),
     }),
 
   dismissBadge: (badgeId) =>
@@ -148,21 +152,34 @@ export const useProgressStore = create<ProgressState>((set) => ({
       newlyUnlocked: state.newlyUnlocked.filter((id) => id !== badgeId),
     })),
 
+  toggleBookmark: (lessonId) =>
+    set((state) => {
+      const next = new Set(state.bookmarkedLessonIds);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+      }
+      return { bookmarkedLessonIds: next };
+    }),
+
   setHasHydrated: (v) => set({ _hasHydrated: v }),
 }));
 
 // --- Manual persistence (avoids zustand/middleware which breaks web bundling) ---
-export type ProgressSnapshot = Pick<
-  ProgressState,
-  | "lessonsCompleted"
-  | "quizScores"
-  | "lastLessonId"
-  | "darkMode"
-  | "streak"
-  | "bestStreak"
-  | "lastActiveDate"
-  | "unlockedBadges"
->;
+// A separate (not Pick<ProgressState, ...>) shape because bookmarkedLessonIds is a
+// Set in the live store but Sets aren't JSON-serialisable — it's an array here.
+export interface ProgressSnapshot {
+  lessonsCompleted: string[];
+  quizScores: Record<string, number>;
+  lastLessonId: string;
+  darkMode: boolean;
+  streak: number;
+  bestStreak: number;
+  lastActiveDate: string;
+  unlockedBadges: Record<string, string>;
+  bookmarkedLessonIds: string[];
+}
 
 function extract(state: ProgressState): ProgressSnapshot {
   return {
@@ -174,6 +191,17 @@ function extract(state: ProgressState): ProgressSnapshot {
     bestStreak: state.bestStreak,
     lastActiveDate: state.lastActiveDate,
     unlockedBadges: state.unlockedBadges,
+    bookmarkedLessonIds: Array.from(state.bookmarkedLessonIds),
+  };
+}
+
+// Converts a persisted snapshot (bookmarkedLessonIds as an array) back into a
+// store patch (bookmarkedLessonIds as a Set).
+function toStatePatch(snapshot: Partial<ProgressSnapshot>): Partial<ProgressState> {
+  const { bookmarkedLessonIds, ...rest } = snapshot;
+  return {
+    ...rest,
+    ...(bookmarkedLessonIds ? { bookmarkedLessonIds: new Set(bookmarkedLessonIds) } : {}),
   };
 }
 
@@ -183,7 +211,7 @@ void (async () => {
   if (raw) {
     try {
       const data = JSON.parse(raw) as Partial<ProgressSnapshot>;
-      useProgressStore.setState(data);
+      useProgressStore.setState(toStatePatch(data));
     } catch {
       // corrupt data — start fresh
     }
@@ -213,7 +241,8 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     Array.isArray(obj.lessonsCompleted) ||
     (typeof obj.quizScores === "object" && obj.quizScores !== null) ||
     typeof obj.streak === "number" ||
-    typeof obj.lastLessonId === "string";
+    typeof obj.lastLessonId === "string" ||
+    Array.isArray(obj.bookmarkedLessonIds);
   if (!hasRecognizedShape) return null;
 
   const validLessonIds = new Set(ALL_LESSONS.map((l) => l.lessonId));
@@ -266,6 +295,16 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     }
   }
 
+  const bookmarkedLessonIds = Array.isArray(obj.bookmarkedLessonIds)
+    ? Array.from(
+        new Set(
+          obj.bookmarkedLessonIds.filter(
+            (id): id is string => typeof id === "string" && validLessonIds.has(id),
+          ),
+        ),
+      )
+    : [];
+
   return {
     lessonsCompleted,
     quizScores,
@@ -275,9 +314,10 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     bestStreak,
     lastActiveDate,
     unlockedBadges,
+    bookmarkedLessonIds,
   };
 }
 
 export function applyProgressSnapshot(snapshot: ProgressSnapshot): void {
-  useProgressStore.setState(snapshot);
+  useProgressStore.setState(toStatePatch(snapshot));
 }

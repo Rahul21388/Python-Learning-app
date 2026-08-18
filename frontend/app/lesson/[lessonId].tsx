@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useEffect } from "react";
@@ -23,6 +23,8 @@ export default function LessonDetailScreen() {
   const completed = useProgressStore((s) => s.lessonsCompleted);
   const markLessonComplete = useProgressStore((s) => s.markLessonComplete);
   const setLastLesson = useProgressStore((s) => s.setLastLesson);
+  const bookmarkedLessonIds = useProgressStore((s) => s.bookmarkedLessonIds);
+  const toggleBookmark = useProgressStore((s) => s.toggleBookmark);
 
   const [quizOpen, setQuizOpen] = useState(false);
 
@@ -47,10 +49,16 @@ export default function LessonDetailScreen() {
 
   const { module, lesson, nextLessonId } = info;
   const isDone = completed.includes(lesson.lessonId);
+  const isBookmarked = bookmarkedLessonIds.has(lesson.lessonId);
 
   const onMarkComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     markLessonComplete(lesson.lessonId);
+  };
+
+  const onToggleBookmark = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleBookmark(lesson.lessonId);
   };
 
   const onNext = () => {
@@ -76,20 +84,35 @@ export default function LessonDetailScreen() {
           paddingBottom: 120,
         }}
       >
-        <Pressable
-          testID="lesson-back-button"
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={10}
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.brand} />
-          <Text
-            numberOfLines={1}
-            style={[styles.backText, { color: colors.brand }]}
+        <View style={styles.headerRow}>
+          <Pressable
+            testID="lesson-back-button"
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={10}
           >
-            {module.title}
-          </Text>
-        </Pressable>
+            <Ionicons name="chevron-back" size={22} color={colors.brand} />
+            <Text
+              numberOfLines={1}
+              style={[styles.backText, { color: colors.brand }]}
+            >
+              {module.title}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            testID="lesson-bookmark-button"
+            onPress={onToggleBookmark}
+            hitSlop={10}
+            style={styles.bookmarkBtn}
+          >
+            <MaterialCommunityIcons
+              name={isBookmarked ? "star" : "star-outline"}
+              size={24}
+              color={isBookmarked ? colors.brandSecondary : colors.muted}
+            />
+          </Pressable>
+        </View>
 
         <View style={styles.metaRow}>
           <View style={[styles.timePill, { backgroundColor: colors.brandTertiary }]}>
@@ -237,12 +260,20 @@ export default function LessonDetailScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.md,
+    flex: 1,
     marginLeft: -4,
+    marginRight: spacing.sm,
   },
+  bookmarkBtn: { padding: 4, marginRight: -4, flexShrink: 0 },
   backText: { fontSize: 16, fontWeight: "500", flexShrink: 1 },
   metaRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
   timePill: {
