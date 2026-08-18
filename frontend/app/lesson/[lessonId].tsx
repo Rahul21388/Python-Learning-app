@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,9 +9,8 @@ import { CodeBlock } from "@/src/components/CodeBlock";
 import { QuizEngine } from "@/src/components/QuizEngine";
 import { findLesson } from "@/src/data/course";
 import { useProgressStore } from "@/src/store/progressStore";
-import { radius, spacing } from "@/src/theme/colors";
+import { radius, spacing, TEXT_SIZE_MULTIPLIERS } from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
-import { useMemo, useState } from "react";
 
 const NOTE_SAVE_DEBOUNCE_MS = 500;
 
@@ -29,6 +28,8 @@ export default function LessonDetailScreen() {
   const toggleBookmark = useProgressStore((s) => s.toggleBookmark);
   const lessonNotes = useProgressStore((s) => s.lessonNotes);
   const setLessonNote = useProgressStore((s) => s.setLessonNote);
+  const textSizeScale = useProgressStore((s) => s.textSizeScale);
+  const fontScale = TEXT_SIZE_MULTIPLIERS[textSizeScale];
 
   const [quizOpen, setQuizOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -171,7 +172,16 @@ export default function LessonDetailScreen() {
           {lesson.title}
         </Text>
 
-        <Text style={[styles.body, { color: colors.onSurfaceSecondary }]}>
+        <Text
+          style={[
+            styles.body,
+            {
+              color: colors.onSurfaceSecondary,
+              fontSize: 16 * fontScale,
+              lineHeight: 25 * fontScale,
+            },
+          ]}
+        >
           {lesson.content}
         </Text>
 
@@ -191,7 +201,16 @@ export default function LessonDetailScreen() {
                   size={18}
                   color={colors.brand}
                 />
-                <Text style={[styles.keyText, { color: colors.onSurface }]}>
+                <Text
+                  style={[
+                    styles.keyText,
+                    {
+                      color: colors.onSurface,
+                      fontSize: 15 * fontScale,
+                      lineHeight: 21 * fontScale,
+                    },
+                  ]}
+                >
                   {k}
                 </Text>
               </View>

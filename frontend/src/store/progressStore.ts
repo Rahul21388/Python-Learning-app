@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { BADGES, buildAchievementContext, evaluateBadges } from "@/src/data/achievements";
 import { ALL_LESSONS } from "@/src/data/course";
+import {
+  TEXT_SIZE_SCALES,
+  TextSizeScale,
+  THEME_PREFERENCES,
+  ThemePreference,
+} from "@/src/theme/colors";
 import { storage } from "@/src/utils/storage";
 
 const STORAGE_KEY = "learn-python-progress";
@@ -14,7 +20,7 @@ interface ProgressState {
   lessonsCompleted: string[];
   quizScores: Record<string, number>; // key = lessonId, value = 0-100
   lastLessonId: string;
-  darkMode: boolean;
+  themePreference: ThemePreference;
   streak: number;
   bestStreak: number;
   lastActiveDate: string;
@@ -25,18 +31,20 @@ interface ProgressState {
   dailyReminderEnabled: boolean;
   dailyReminderHour: number; // 0-23, local time
   dailyReminderMinute: number; // 0-59
+  textSizeScale: TextSizeScale;
   _hasHydrated: boolean;
 
   markLessonComplete: (lessonId: string) => void;
   setQuizScore: (lessonId: string, score: number) => void;
   setLastLesson: (lessonId: string) => void;
-  toggleDarkMode: () => void;
+  setThemePreference: (pref: ThemePreference) => void;
   clearAllProgress: () => void;
   dismissBadge: (badgeId: string) => void;
   toggleBookmark: (lessonId: string) => void;
   setLessonNote: (lessonId: string, note: string) => void;
   setDailyReminderEnabled: (enabled: boolean) => void;
   setDailyReminderTime: (hour: number, minute: number) => void;
+  setTextSizeScale: (scale: TextSizeScale) => void;
   setHasHydrated: (v: boolean) => void;
 }
 
@@ -108,7 +116,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
   lessonsCompleted: [],
   quizScores: {},
   lastLessonId: "",
-  darkMode: false,
+  themePreference: "system",
   streak: 0,
   bestStreak: 0,
   lastActiveDate: "",
@@ -119,6 +127,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
   dailyReminderEnabled: false,
   dailyReminderHour: 19,
   dailyReminderMinute: 0,
+  textSizeScale: "medium",
   _hasHydrated: false,
 
   markLessonComplete: (lessonId) =>
@@ -143,7 +152,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
 
   setLastLesson: (lessonId) => set({ lastLessonId: lessonId }),
 
-  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+  setThemePreference: (pref) => set({ themePreference: pref }),
 
   clearAllProgress: () =>
     set({
@@ -193,6 +202,8 @@ export const useProgressStore = create<ProgressState>((set) => ({
   setDailyReminderTime: (hour, minute) =>
     set({ dailyReminderHour: hour, dailyReminderMinute: minute }),
 
+  setTextSizeScale: (scale) => set({ textSizeScale: scale }),
+
   setHasHydrated: (v) => set({ _hasHydrated: v }),
 }));
 
@@ -203,7 +214,7 @@ export interface ProgressSnapshot {
   lessonsCompleted: string[];
   quizScores: Record<string, number>;
   lastLessonId: string;
-  darkMode: boolean;
+  themePreference: ThemePreference;
   streak: number;
   bestStreak: number;
   lastActiveDate: string;
@@ -213,6 +224,7 @@ export interface ProgressSnapshot {
   dailyReminderEnabled: boolean;
   dailyReminderHour: number;
   dailyReminderMinute: number;
+  textSizeScale: TextSizeScale;
 }
 
 function extract(state: ProgressState): ProgressSnapshot {
@@ -220,7 +232,7 @@ function extract(state: ProgressState): ProgressSnapshot {
     lessonsCompleted: state.lessonsCompleted,
     quizScores: state.quizScores,
     lastLessonId: state.lastLessonId,
-    darkMode: state.darkMode,
+    themePreference: state.themePreference,
     streak: state.streak,
     bestStreak: state.bestStreak,
     lastActiveDate: state.lastActiveDate,
@@ -230,6 +242,7 @@ function extract(state: ProgressState): ProgressSnapshot {
     dailyReminderEnabled: state.dailyReminderEnabled,
     dailyReminderHour: state.dailyReminderHour,
     dailyReminderMinute: state.dailyReminderMinute,
+    textSizeScale: state.textSizeScale,
   };
 }
 
@@ -243,13 +256,26 @@ function toStatePatch(snapshot: Partial<ProgressSnapshot>): Partial<ProgressStat
   };
 }
 
+// Pre-v1.0.2 storage/exports had a `darkMode: boolean` field instead of
+// `themePreference` — migrate it in place so old data still loads correctly.
+type LegacyProgressData = Partial<ProgressSnapshot> & { darkMode?: boolean };
+
+function migrateThemePreference(data: LegacyProgressData): Partial<ProgressSnapshot> {
+  if (data.themePreference) return data;
+  if (typeof data.darkMode === "boolean") {
+    const { darkMode, ...rest } = data;
+    return { ...rest, themePreference: darkMode ? "dark" : "light" };
+  }
+  return data;
+}
+
 // Hydrate once on load, then persist on every change.
 void (async () => {
   const raw = await storage.getItem<string>(STORAGE_KEY, "");
   if (raw) {
     try {
-      const data = JSON.parse(raw) as Partial<ProgressSnapshot>;
-      useProgressStore.setState(toStatePatch(data));
+      const data = JSON.parse(raw) as LegacyProgressData;
+      useProgressStore.setState(toStatePatch(migrateThemePreference(data)));
     } catch {
       // corrupt data — start fresh
     }
@@ -320,7 +346,22 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
       ? Math.max(streak, Math.round(obj.bestStreak))
       : streak;
   const lastActiveDate = typeof obj.lastActiveDate === "string" ? obj.lastActiveDate : "";
-  const darkMode = typeof obj.darkMode === "boolean" ? obj.darkMode : false;
+
+  const themePreference: ThemePreference = (
+    THEME_PREFERENCES as readonly string[]
+  ).includes(obj.themePreference as string)
+    ? (obj.themePreference as ThemePreference)
+    : typeof obj.darkMode === "boolean"
+      ? obj.darkMode
+        ? "dark"
+        : "light"
+      : "system";
+
+  const textSizeScale: TextSizeScale = (
+    TEXT_SIZE_SCALES as readonly string[]
+  ).includes(obj.textSizeScale as string)
+    ? (obj.textSizeScale as TextSizeScale)
+    : "medium";
 
   const validBadgeIds = new Set(BADGES.map((b) => b.id));
   const unlockedBadges: Record<string, string> = {};
@@ -376,7 +417,7 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     lessonsCompleted,
     quizScores,
     lastLessonId,
-    darkMode,
+    themePreference,
     streak,
     bestStreak,
     lastActiveDate,
@@ -386,6 +427,7 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     dailyReminderEnabled,
     dailyReminderHour,
     dailyReminderMinute,
+    textSizeScale,
   };
 }
 

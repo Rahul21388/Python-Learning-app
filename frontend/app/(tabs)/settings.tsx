@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
 import { File, Paths } from "expo-file-system";
 import * as Haptics from "expo-haptics";
@@ -23,9 +24,22 @@ import {
   sanitizeProgressSnapshot,
   useProgressStore,
 } from "@/src/store/progressStore";
-import { radius, spacing } from "@/src/theme/colors";
+import {
+  radius,
+  spacing,
+  TEXT_SIZE_LABELS,
+  TEXT_SIZE_SCALES,
+  THEME_PREFERENCES,
+  ThemePreference,
+} from "@/src/theme/colors";
 import { useTheme } from "@/src/theme/useTheme";
 import { remindersSupported, syncDailyReminder } from "@/src/utils/reminders";
+
+const THEME_OPTION_LABELS: Record<ThemePreference, string> = {
+  system: "System",
+  light: "Light",
+  dark: "Dark",
+};
 
 const REMINDER_TIME_PRESETS: { label: string; hour: number; minute: number }[] = [
   { label: "9:00 AM", hour: 9, minute: 0 },
@@ -41,10 +55,12 @@ function formatReminderTime(hour: number, minute: number): string {
 }
 
 export default function SettingsScreen() {
-  const { colors, dark } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const darkMode = useProgressStore((s) => s.darkMode);
-  const toggleDarkMode = useProgressStore((s) => s.toggleDarkMode);
+  const themePreference = useProgressStore((s) => s.themePreference);
+  const setThemePreference = useProgressStore((s) => s.setThemePreference);
+  const textSizeScale = useProgressStore((s) => s.textSizeScale);
+  const setTextSizeScale = useProgressStore((s) => s.setTextSizeScale);
   const clearAllProgress = useProgressStore((s) => s.clearAllProgress);
   const dailyReminderEnabled = useProgressStore((s) => s.dailyReminderEnabled);
   const dailyReminderHour = useProgressStore((s) => s.dailyReminderHour);
@@ -71,9 +87,14 @@ export default function SettingsScreen() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const onToggle = () => {
+  const onSelectTheme = (pref: ThemePreference) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggleDarkMode();
+    setThemePreference(pref);
+  };
+
+  const onSelectTextSize = (scale: (typeof TEXT_SIZE_SCALES)[number]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTextSizeScale(scale);
   };
 
   const onToggleReminder = async (next: boolean) => {
@@ -205,7 +226,7 @@ export default function SettingsScreen() {
         <View
           style={[styles.group, { backgroundColor: colors.surfaceSecondary }]}
         >
-          <View style={styles.row}>
+          <View style={[styles.row, styles.rowBorder, { borderColor: colors.divider }]}>
             <View style={styles.rowLeft}>
               <View
                 style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
@@ -213,16 +234,80 @@ export default function SettingsScreen() {
                 <Ionicons name="moon" size={18} color={colors.brand} />
               </View>
               <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
-                Dark mode
+                Theme
               </Text>
             </View>
-            <Switch
-              testID="dark-mode-switch"
-              value={darkMode}
-              onValueChange={onToggle}
-              trackColor={{ false: colors.surfaceTertiary, true: colors.brand }}
-              thumbColor="#FFFFFF"
-            />
+          </View>
+          <View style={styles.reminderTimeRow}>
+            {THEME_PREFERENCES.map((pref) => {
+              const selected = pref === themePreference;
+              return (
+                <Pressable
+                  key={pref}
+                  testID={`theme-option-${pref}`}
+                  onPress={() => onSelectTheme(pref)}
+                  style={[
+                    styles.timeChip,
+                    {
+                      backgroundColor: selected
+                        ? colors.brand
+                        : colors.surfaceTertiary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.timeChipText,
+                      { color: selected ? colors.onBrand : colors.onSurface },
+                    ]}
+                  >
+                    {THEME_OPTION_LABELS[pref]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={[styles.row, styles.rowBorder, { borderColor: colors.divider }]}>
+            <View style={styles.rowLeft}>
+              <View
+                style={[styles.rowIcon, { backgroundColor: colors.brandTertiary }]}
+              >
+                <Ionicons name="text" size={18} color={colors.brand} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
+                Lesson text size
+              </Text>
+            </View>
+          </View>
+          <View style={styles.reminderTimeRow}>
+            {TEXT_SIZE_SCALES.map((scale) => {
+              const selected = scale === textSizeScale;
+              return (
+                <Pressable
+                  key={scale}
+                  testID={`text-size-${scale}`}
+                  onPress={() => onSelectTextSize(scale)}
+                  style={[
+                    styles.timeChip,
+                    {
+                      backgroundColor: selected
+                        ? colors.brand
+                        : colors.surfaceTertiary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.timeChipText,
+                      { color: selected ? colors.onBrand : colors.onSurface },
+                    ]}
+                  >
+                    {TEXT_SIZE_LABELS[scale]}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -419,7 +504,9 @@ export default function SettingsScreen() {
             <Text style={[styles.rowLabel, { color: colors.onSurface }]}>
               Version
             </Text>
-            <Text style={[styles.rowValue, { color: colors.muted }]}>1.0.0</Text>
+            <Text style={[styles.rowValue, { color: colors.muted }]}>
+              {Constants.expoConfig?.version ?? "1.0.1"}
+            </Text>
           </View>
           <View style={styles.aboutBody}>
             <View style={styles.aboutHeader}>
@@ -533,8 +620,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-      {/* keep dark var referenced to avoid unused warnings */}
-      {dark ? null : null}
     </View>
   );
 }

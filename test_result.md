@@ -174,6 +174,18 @@ frontend:
         agent: "main"
         comment: "Added expo-notifications (~0.32.17) + plugin entry in app.json. progressStore: dailyReminderEnabled/Hour/Minute, persisted + in export/import, deliberately NOT reset by clearAllProgress (device preference, like darkMode). src/utils/reminders.ts: remindersSupported() (false on web), syncDailyReminder() (user-gesture path, may prompt for permission, called from Settings toggle/time chips), silentlyResyncDailyReminder() (launch-time re-arm, never prompts, only acts if permission already granted). Settings REMINDERS section: toggle with live subtitle + 4 time-preset chips (Morning/Afternoon/Evening/Night); permission-denied flips the toggle back off with a toast instead of leaving it stuck on. Ran into a Metro stale-cache 500 after adding the native module — fixed with `expo start -c`. Verified in web preview only: UI renders, toggle-on gracefully shows the 'not available in this preview' toast, zero console errors. NOT verified: actual notification permission prompt or delivery on a real device/emulator — none was available in this environment. needs_retesting left true until that device-level check happens."
 
+  - task: "System theme, adjustable lesson text size, badge requirement hints"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/theme/colors.ts, /app/frontend/src/theme/useTheme.ts, /app/frontend/src/store/progressStore.ts, /app/frontend/app/(tabs)/settings.tsx, /app/frontend/app/(tabs)/progress.tsx, /app/frontend/app/lesson/[lessonId].tsx, /app/frontend/app/_layout.tsx, /app/frontend/src/data/achievements.ts"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Inspired by a competitor app's screenshots (user-provided) -- adapted, not copied; skipped their premium paywall and compiler stat as not relevant here. (1) themePreference replaces darkMode boolean in progressStore, with migration for old persisted/exported darkMode values; useTheme() resolves 'system' via react-native's useColorScheme(). Settings APPEARANCE section now has System/Light/Dark chips (testIDs theme-option-<pref>). (2) textSizeScale (small/medium/large/xlarge) scales only lesson body copy + key points via multipliers in colors.ts; Settings has 4 chips (testIDs text-size-<scale>). (3) Each badge in achievements.ts got a short `requirement` field (e.g. '10 lessons', '3-day streak'), shown under the title on locked grid cells only (progress.tsx). Also fixed Settings' hardcoded '1.0.0' version string to read live from Constants.expoConfig?.version. Verified via Playwright: theme chips (System correctly resolves against browser OS scheme, Dark forces dark colors), text-size chips (visual diff of Small vs Extra Large on a real lesson), badge requirement hints all render, zero console errors. Required a Metro cache clear (`expo start -c`) after the store schema change."
+
 agent_communication:
   - agent: "main"
     message: "Iteration 2: verify new Lesson Search (search bar on Courses tab, testIDs: lesson-search-input, search-result-<id>, search-clear-button, search-empty-state) and confirm existing streaks feature updates after completing a lesson. Offline app, no backend."
@@ -185,3 +197,5 @@ agent_communication:
     message: "Iteration 5: added per-lesson notes (see task above). Self-verified via Playwright. Backlog is now down to one item: daily goal reminders."
   - agent: "main"
     message: "Iteration 6: added Daily goal reminders (see task above). This is the last original backlog item -- all planned features have now shipped. Flagging for a real-device test pass before this ships: local-notification permission prompts and actual delivery can't be exercised in the web preview this environment is limited to."
+  - agent: "main"
+    message: "Iteration 7: added System theme, adjustable lesson text size, and badge requirement hints (see task above), inspired by user-provided competitor screenshots. Note this replaced the darkMode boolean with themePreference -- migration is in place for existing installs and old export files, but worth a sanity check on a device that has real persisted data from before this change."

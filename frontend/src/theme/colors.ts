@@ -89,3 +89,23 @@ export const radius = {
   lg: 20,
   pill: 999,
 };
+
+export const THEME_PREFERENCES = ["system", "light", "dark"] as const;
+export type ThemePreference = (typeof THEME_PREFERENCES)[number];
+
+// Scales lesson reading content (body copy, key points) only — headings, UI
+// chrome and controls stay fixed size so the layout doesn't break.
+export const TEXT_SIZE_SCALES = ["small", "medium", "large", "xlarge"] as const;
+export type TextSizeScale = (typeof TEXT_SIZE_SCALES)[number];
+export const TEXT_SIZE_LABELS: Record<TextSizeScale, string> = {
+  small: "Small",
+  medium: "Medium",
+  large: "Large",
+  xlarge: "Extra large",
+};
+export const TEXT_SIZE_MULTIPLIERS: Record<TextSizeScale, number> = {
+  small: 0.875,
+  medium: 1,
+  large: 1.15,
+  xlarge: 1.3,
+};

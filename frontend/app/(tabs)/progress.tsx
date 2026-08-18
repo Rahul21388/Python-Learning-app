@@ -183,6 +183,14 @@ export default function ProgressScreen() {
                 >
                   {b.title}
                 </Text>
+                {!isUnlocked && (
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.badgeRequirement, { color: colors.muted }]}
+                  >
+                    {b.requirement}
+                  </Text>
+                )}
               </Pressable>
             );
           })}
@@ -401,6 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  badgeRequirement: { fontSize: 9, fontWeight: "600", textAlign: "center", opacity: 0.85 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

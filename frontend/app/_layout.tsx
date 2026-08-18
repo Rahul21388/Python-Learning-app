@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BadgeUnlockToast } from "@/src/components/BadgeUnlockToast";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { useProgressStore } from "@/src/store/progressStore";
+import { useTheme } from "@/src/theme/useTheme";
 import { silentlyResyncDailyReminder } from "@/src/utils/reminders";
 
 // Disable logbox errors etc so that users can see the app
@@ -26,7 +27,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
-  const darkMode = useProgressStore((s) => s.darkMode);
+  const { dark } = useTheme();
   const hasHydrated = useProgressStore((s) => s._hasHydrated);
 
   const onSplashLayout = useCallback(() => {
@@ -66,7 +67,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style={darkMode ? "light" : "dark"} />
+        <StatusBar style={dark ? "light" : "dark"} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
