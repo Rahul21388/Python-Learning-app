@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProgressBar } from "@/src/components/ProgressBar";
+import { Badge, BADGES } from "@/src/data/achievements";
 import {
   COURSE_DATA,
   findLesson,
@@ -26,6 +28,8 @@ export default function ProgressScreen() {
   const streak = useProgressStore((s) => s.streak);
   const bestStreak = useProgressStore((s) => s.bestStreak);
   const lastLessonId = useProgressStore((s) => s.lastLessonId);
+  const unlockedBadges = useProgressStore((s) => s.unlockedBadges);
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   const overall = getOverallProgress(completed);
   const quizEntries = Object.entries(quizScores);
@@ -38,6 +42,7 @@ export default function ProgressScreen() {
 
   const resumeId = lastLessonId || getFirstLessonId();
   const resumeInfo = findLesson(resumeId);
+  const badgeCount = Object.keys(unlockedBadges).length;
 
   const onContinue = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -123,6 +128,64 @@ export default function ProgressScreen() {
               avg quiz score
             </Text>
           </View>
+          <View
+            style={[styles.statCard, { backgroundColor: colors.surfaceSecondary }]}
+          >
+            <Ionicons name="medal" size={22} color={colors.brandSecondary} />
+            <Text style={[styles.statNum, { color: colors.onSurface }]}>
+              {badgeCount}/{BADGES.length}
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.muted }]}>
+              badges earned
+            </Text>
+          </View>
+        </View>
+
+        {/* Achievements */}
+        <Text style={[styles.section, { color: colors.muted }]}>
+          ACHIEVEMENTS
+        </Text>
+        <View style={styles.badgeGrid}>
+          {BADGES.map((b) => {
+            const isUnlocked = !!unlockedBadges[b.id];
+            return (
+              <Pressable
+                key={b.id}
+                testID={`badge-${b.id}`}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSelectedBadge(b);
+                }}
+                style={styles.badgeCell}
+              >
+                <View
+                  style={[
+                    styles.badgeIcon,
+                    {
+                      backgroundColor: isUnlocked
+                        ? colors.brandSecondary
+                        : colors.surfaceSecondary,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={isUnlocked ? (b.icon as any) : "lock-closed"}
+                    size={22}
+                    color={isUnlocked ? colors.onBrandSecondary : colors.muted}
+                  />
+                </View>
+                <Text
+                  numberOfLines={2}
+                  style={[
+                    styles.badgeLabel,
+                    { color: isUnlocked ? colors.onSurface : colors.muted },
+                  ]}
+                >
+                  {b.title}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {/* Module breakdown */}
@@ -228,6 +291,63 @@ export default function ProgressScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={!!selectedBadge}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedBadge(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSelectedBadge(null)}
+        >
+          {selectedBadge && (
+            <View
+              testID="badge-detail-modal"
+              style={[styles.modalCard, { backgroundColor: colors.surface }]}
+            >
+              <View
+                style={[
+                  styles.modalIcon,
+                  {
+                    backgroundColor: unlockedBadges[selectedBadge.id]
+                      ? colors.brandSecondary
+                      : colors.surfaceSecondary,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    unlockedBadges[selectedBadge.id]
+                      ? (selectedBadge.icon as any)
+                      : "lock-closed"
+                  }
+                  size={28}
+                  color={
+                    unlockedBadges[selectedBadge.id]
+                      ? colors.onBrandSecondary
+                      : colors.muted
+                  }
+                />
+              </View>
+              <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
+                {selectedBadge.title}
+              </Text>
+              <Text style={[styles.modalText, { color: colors.muted }]}>
+                {selectedBadge.description}
+              </Text>
+              <Text style={[styles.modalSub, { color: colors.muted }]}>
+                {unlockedBadges[selectedBadge.id]
+                  ? `Unlocked ${new Date(
+                      unlockedBadges[selectedBadge.id],
+                    ).toLocaleDateString()}`
+                  : "Locked"}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -263,6 +383,49 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statNum: { fontSize: 24, fontWeight: "800", marginTop: 4 },
+  badgeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  badgeCell: {
+    width: "22%",
+    alignItems: "center",
+    gap: 6,
+  },
+  badgeIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.xl,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  modalIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  modalTitle: { fontSize: 20, fontWeight: "800" },
+  modalText: { fontSize: 14, lineHeight: 20, textAlign: "center" },
+  modalSub: { fontSize: 13, fontWeight: "600", marginTop: spacing.xs },
   section: {
     fontSize: 12,
     fontWeight: "800",

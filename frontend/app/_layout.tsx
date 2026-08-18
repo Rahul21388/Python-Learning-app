@@ -6,6 +6,7 @@ import { Image, LogBox, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { BadgeUnlockToast } from "@/src/components/BadgeUnlockToast";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { useProgressStore } from "@/src/store/progressStore";
 
@@ -54,6 +55,7 @@ export default function RootLayout() {
           <Stack.Screen name="module/[moduleId]" />
           <Stack.Screen name="lesson/[lessonId]" />
         </Stack>
+        <BadgeUnlockToast />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

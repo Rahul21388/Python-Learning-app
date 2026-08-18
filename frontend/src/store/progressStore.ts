@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { BADGES, buildAchievementContext, evaluateBadges } from "@/src/data/achievements";
 import { ALL_LESSONS } from "@/src/data/course";
 import { storage } from "@/src/utils/storage";
 
@@ -17,6 +18,8 @@ interface ProgressState {
   streak: number;
   bestStreak: number;
   lastActiveDate: string;
+  unlockedBadges: Record<string, string>; // badge id -> ISO date unlocked
+  newlyUnlocked: string[]; // pending badge ids to show as a toast, most recent last
   _hasHydrated: boolean;
 
   markLessonComplete: (lessonId: string) => void;
@@ -24,7 +27,41 @@ interface ProgressState {
   setLastLesson: (lessonId: string) => void;
   toggleDarkMode: () => void;
   clearAllProgress: () => void;
+  dismissBadge: (badgeId: string) => void;
   setHasHydrated: (v: boolean) => void;
+}
+
+// Diffs current progress against already-unlocked badges and returns the
+// state patch for any newly-earned ones. Returns {} when nothing changed,
+// so callers can spread the result without clobbering unrelated fields.
+function withBadgeUnlocks(
+  state: ProgressState,
+  next: {
+    lessonsCompleted?: string[];
+    quizScores?: Record<string, number>;
+    bestStreak?: number;
+  },
+): Partial<ProgressState> {
+  const completed = next.lessonsCompleted ?? state.lessonsCompleted;
+  const quizScores = next.quizScores ?? state.quizScores;
+  const bestStreak = next.bestStreak ?? state.bestStreak;
+  const ctx = buildAchievementContext(completed, quizScores, bestStreak);
+  const earnedIds = evaluateBadges(ctx);
+
+  const unlockedBadges = { ...state.unlockedBadges };
+  const newlyEarned: string[] = [];
+  const now = new Date().toISOString();
+  for (const id of earnedIds) {
+    if (!unlockedBadges[id]) {
+      unlockedBadges[id] = now;
+      newlyEarned.push(id);
+    }
+  }
+  if (newlyEarned.length === 0) return {};
+  return {
+    unlockedBadges,
+    newlyUnlocked: [...state.newlyUnlocked, ...newlyEarned],
+  };
 }
 
 function computeStreak(state: ProgressState): {
@@ -66,6 +103,8 @@ export const useProgressStore = create<ProgressState>((set) => ({
   streak: 0,
   bestStreak: 0,
   lastActiveDate: "",
+  unlockedBadges: {},
+  newlyUnlocked: [],
   _hasHydrated: false,
 
   markLessonComplete: (lessonId) =>
@@ -74,17 +113,19 @@ export const useProgressStore = create<ProgressState>((set) => ({
         ? state.lessonsCompleted
         : [...state.lessonsCompleted, lessonId];
       const streakInfo = computeStreak(state);
-      return {
+      const next = {
         lessonsCompleted: completed,
         lastLessonId: lessonId,
         ...streakInfo,
       };
+      return { ...next, ...withBadgeUnlocks(state, next) };
     }),
 
   setQuizScore: (lessonId, score) =>
-    set((state) => ({
-      quizScores: { ...state.quizScores, [lessonId]: score },
-    })),
+    set((state) => {
+      const next = { quizScores: { ...state.quizScores, [lessonId]: score } };
+      return { ...next, ...withBadgeUnlocks(state, next) };
+    }),
 
   setLastLesson: (lessonId) => set({ lastLessonId: lessonId }),
 
@@ -98,7 +139,14 @@ export const useProgressStore = create<ProgressState>((set) => ({
       streak: 0,
       bestStreak: 0,
       lastActiveDate: "",
+      unlockedBadges: {},
+      newlyUnlocked: [],
     }),
+
+  dismissBadge: (badgeId) =>
+    set((state) => ({
+      newlyUnlocked: state.newlyUnlocked.filter((id) => id !== badgeId),
+    })),
 
   setHasHydrated: (v) => set({ _hasHydrated: v }),
 }));
@@ -113,6 +161,7 @@ export type ProgressSnapshot = Pick<
   | "streak"
   | "bestStreak"
   | "lastActiveDate"
+  | "unlockedBadges"
 >;
 
 function extract(state: ProgressState): ProgressSnapshot {
@@ -124,6 +173,7 @@ function extract(state: ProgressState): ProgressSnapshot {
     streak: state.streak,
     bestStreak: state.bestStreak,
     lastActiveDate: state.lastActiveDate,
+    unlockedBadges: state.unlockedBadges,
   };
 }
 
@@ -204,6 +254,18 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
   const lastActiveDate = typeof obj.lastActiveDate === "string" ? obj.lastActiveDate : "";
   const darkMode = typeof obj.darkMode === "boolean" ? obj.darkMode : false;
 
+  const validBadgeIds = new Set(BADGES.map((b) => b.id));
+  const unlockedBadges: Record<string, string> = {};
+  if (obj.unlockedBadges && typeof obj.unlockedBadges === "object") {
+    for (const [id, date] of Object.entries(
+      obj.unlockedBadges as Record<string, unknown>,
+    )) {
+      if (validBadgeIds.has(id) && typeof date === "string") {
+        unlockedBadges[id] = date;
+      }
+    }
+  }
+
   return {
     lessonsCompleted,
     quizScores,
@@ -212,6 +274,7 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
     streak,
     bestStreak,
     lastActiveDate,
+    unlockedBadges,
   };
 }
 
