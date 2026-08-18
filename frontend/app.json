@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Learn Python",
+    "slug": "pylessonhub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "pylessonhub",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
@@ -28,8 +28,6 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-image.png",
-          "resizeMode": "cover",
           "backgroundColor": "#01071C"
         }
       ]
@@ -40,7 +38,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "753f00bb-06b5-4604-b63b-94e5eb3ba4f6"
+        "projectId": "7e35cda0-f288-4483-8ae3-df7631365342"
       }
     },
     "owner": "rahul_prakash",
@@ -48,7 +46,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/753f00bb-06b5-4604-b63b-94e5eb3ba4f6"
+      "url": "https://u.expo.dev/7e35cda0-f288-4483-8ae3-df7631365342"
     }
   }
 }

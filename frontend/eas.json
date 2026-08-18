@@ -12,12 +12,24 @@
       "distribution": "internal",
       "channel": "preview"
     },
+    "internal": {
+      "extends": "production",
+      "channel": "internal",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
     }
   },
   "submit": {
+    "internal": {
+      "android": {
+        "track": "internal"
+      }
+    },
     "production": {}
   }
 }
